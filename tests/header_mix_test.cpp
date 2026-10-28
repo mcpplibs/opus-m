@@ -21,8 +21,14 @@ static OPUS_INLINE int mwrap_opus_inline(int x) { return x + 1; }
 #ifndef OPUS_HAVE_OPUS_PROJECTION_H
 #error "<opus_projection.h> announces itself"
 #endif
-#if !OPUS_GNUC_PREREQ(0, 0)
-#error "OPUS_GNUC_PREREQ(0, 0) holds for every compiler"
+// A compiler-version test for #if: GCC-compatible compilers of at least that
+// version, and 0 for every other (MSVC-compatible clang on Windows).
+#if defined(__GNUC__)
+#if !OPUS_GNUC_PREREQ(3, 4) || !OP_GNUC_PREREQ(3, 4)
+#error "a GCC-compatible compiler is at least GCC 3.4"
+#endif
+#elif OPUS_GNUC_PREREQ(0, 0) || OP_GNUC_PREREQ(0, 0)
+#error "OPUS_GNUC_PREREQ is 0 without __GNUC__"
 #endif
 
 TEST(HeaderMix, SameEntities) {
