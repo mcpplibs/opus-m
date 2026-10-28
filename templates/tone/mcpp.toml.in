@@ -1,0 +1,10 @@
+[package]
+name    = "{{project.name}}"
+version = "0.1.0"
+
+[targets.{{project.name}}]
+kind = "bin"
+main = "src/main.cpp"
+
+[dependencies]
+"{{self.name}}" = "{{self.version}}"
