@@ -1,0 +1,33 @@
+name: Actual project templates
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: templates-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  MCPP_VERSION: "2026.10.26.1"
+jobs:
+  templates:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the pinned mcpp
+        shell: bash
+        run: |
+          archive="mcpp-${MCPP_VERSION}-linux-x86_64.tar.gz"
+          curl -L -fsS -o "$archive" "https://github.com/mcpp-community/mcpp/releases/download/v${MCPP_VERSION}/$archive"
+          tar -xzf "$archive"
+          echo "$PWD/mcpp-${MCPP_VERSION}-linux-x86_64/bin" >> "$GITHUB_PATH"
+      # The candidate index (tools/candidate_index.py) only while mcpp-index
+      # does not publish compat.opus, compat.opusfile and compat.ogg.
+      - name: Actual scaffold, strict build and run of the default template
+        shell: bash
+        run: |
+          index=$(python3 tools/candidate_index.py --checkout-only)
+          python3 tools/test_template.py --toolchain gcc@16.1.0 ${index:+--index "$index"}

@@ -1,0 +1,22 @@
+[package]
+name        = "opus"
+version     = "0.1.0"
+description = "An Ogg Opus tool (encode WAV to .opus, decode .opus to WAV, show a file's links, headers and tags) and RFC 6716's decoder conformance runner, written against import mcpplibs.mwrap.opus; tools/run_conformance.py runs them"
+license     = "Apache-2.0"
+
+[targets.opus]
+kind = "bin"
+main = "src/main.cpp"
+
+# RFC 6716 / RFC 8251's test vectors: the decoder, against the module.
+[targets.opus_vector_decode]
+kind = "bin"
+main = "conformance/opus_vector_decode.cpp"
+
+# libopus's own quality comparison, unchanged (BSD-3-Clause, see NOTICE).
+[targets.opus_compare]
+kind = "bin"
+main = "conformance/opus_compare.c"
+
+[dependencies]
+"mcpplibs.mwrap.opus" = { path = "../.." }

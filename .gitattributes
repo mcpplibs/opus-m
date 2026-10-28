@@ -1,0 +1,4 @@
+# Preserve upstream document bytes and original whitespace on every platform.
+upstream/** -text -whitespace
+# libopus's own opus_compare.c, byte for byte (tools/run_conformance.py checks it).
+examples/opus/conformance/opus_compare.c -text -whitespace

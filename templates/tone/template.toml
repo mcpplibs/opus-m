@@ -1,0 +1,4 @@
+[template]
+description  = "Ogg Opus with import mcpplibs.mwrap.opus: a chord encoded by libopus, paged into an Ogg Opus stream with libogg, and read back with opusfile — its headers, its exact length, and the decoded signal's quality — all in memory, no device or file needed"
+default      = true
+post_message = "Run `mcpp run`, or `mcpp run -- tone.opus` to also write the stream to a file."

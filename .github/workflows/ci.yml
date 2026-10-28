@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mcpp:
+    name: mcpp (${{ matrix.os }}, ${{ matrix.toolchain }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-24.04,     toolchain: 'gcc@16.1.0' }
+          - { os: ubuntu-24.04,     toolchain: 'llvm@23.1.3' }
+          - { os: ubuntu-24.04-arm, toolchain: 'gcc@16.1.0' }
+          - { os: macos-15,         toolchain: 'llvm@23.1.3' }
+          - { os: windows-2025,     toolchain: 'llvm@23.1.3' }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    env:
+      XLINGS_NON_INTERACTIVE: 1
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Mwrap identity and bilingual README contract
+        run: python3 tools/check_mwrap_release.py
+
+      - name: Install Xlings (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/openxlings/xlings/refs/heads/main/tools/other/quick_install.sh | bash
+          echo "$HOME/.xlings/subos/current/bin" >> "$GITHUB_PATH"
+
+      - name: Install Xlings (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          irm https://raw.githubusercontent.com/openxlings/xlings/main/tools/other/quick_install.ps1 | iex
+          "$env:USERPROFILE\.xlings\subos\current\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Install project tools (.xlings.json)
+        run: |
+          for attempt in 1 2 3; do
+            xlings update > /dev/null 2>&1 || true
+            if xlings install; then break; fi
+            [ "$attempt" = 3 ] && exit 1
+            sleep 30
+          done
+          mcpp --version
+
+      - name: Select the toolchain
+        run: |
+          name="${{ matrix.toolchain }}"
+          mcpp toolchain install "${name%@*}" "${name#*@}"
+          mcpp toolchain default "$name"
+
+      # Until mcpp-index publishes compat.opus, compat.opusfile and compat.ogg
+      # (mcpplibs/mcpp-index#612), the compat namespace of this checkout's
+      # manifests resolves from that PR's branch, as an unchanged namespace
+      # view of its descriptors. Once the published index has the descriptors,
+      # this step does nothing.
+      - name: Candidate compat index (only while compat.opus is unpublished)
+        run: python3 tools/candidate_index.py --ci
+
+      - name: Build the modules
+        run: mcpp build
+
+      - name: Tests (the API, every macro mapping against the headers, header mixing, every function linked)
+        run: mcpp test
+
+      - name: Export audit (the generated sources are fresh; every declaration and macro of the public headers)
+        run: python3 tools/check_exports.py
+
+      - name: RFC 6716 / RFC 8251 decoder test vectors and the Ogg Opus tool, on programs written against the module
+        run: python3 tools/run_conformance.py

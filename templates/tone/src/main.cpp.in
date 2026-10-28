@@ -1,0 +1,121 @@
+// {{project.name}} — Opus audio through import mcpplibs.mwrap.opus: two
+// seconds of an A major chord encoded with libopus, paged into an Ogg Opus
+// stream (RFC 7845) with libogg, then opened from memory with opusfile and
+// decoded back, all without a device or a file.
+//
+//   mcpp run                 the stream's headers, length and quality
+//   mcpp run -- tone.opus    the same, and the stream written to tone.opus
+import std;
+import mcpplibs.mwrap.opus;
+
+using namespace mcpplibs::mwrap::opus::macros;  // OPUS_APPLICATION_AUDIO, OPUS_SET_BITRATE …
+
+namespace {
+
+constexpr int rate = 48000, channels = 2, frame = 960;  // 20 ms frames
+
+void put(std::vector<unsigned char>& v, std::uint32_t x, int bytes) {
+    for (int i = 0; i < bytes; ++i) v.push_back((x >> (8 * i)) & 0xFF);
+}
+
+void append(std::vector<unsigned char>& out, const ogg_page& page) {
+    out.insert(out.end(), page.header, page.header + page.header_len);
+    out.insert(out.end(), page.body, page.body + page.body_len);
+}
+
+}  // namespace
+
+int main(int argc, char** argv) {
+    // A major: A4, C#5, E5, a little wider in the right channel.
+    const int samples = 2 * rate;
+    std::vector<float> chord(static_cast<std::size_t>(samples) * channels);
+    for (int i = 0; i < samples; ++i)
+        for (int c = 0; c < channels; ++c) {
+            double s = 0;
+            for (double f : {440.0, 554.37, 659.25}) s += std::sin(2 * std::numbers::pi * f * (1 + 0.002 * c) * i / rate);
+            chord[static_cast<std::size_t>(i) * channels + c] = static_cast<float>(0.2 * s);
+        }
+
+    int err = 0;
+    OpusEncoder* enc = opus_encoder_create(rate, channels, OPUS_APPLICATION_AUDIO, &err);
+    opus_encoder_ctl(enc, OPUS_SET_BITRATE(96000));
+    opus_int32 preskip = 0;
+    opus_encoder_ctl(enc, OPUS_GET_LOOKAHEAD(&preskip));
+
+    // OpusHead and OpusTags, each on a page of its own.
+    std::vector<unsigned char> stream;
+    ogg_stream_state os;
+    ogg_stream_init(&os, 0x4f707573);
+    ogg_page page;
+    std::vector<unsigned char> head = {'O', 'p', 'u', 's', 'H', 'e', 'a', 'd', 1, channels};
+    put(head, static_cast<std::uint32_t>(preskip), 2);
+    put(head, rate, 4);
+    put(head, 0, 2);  // output gain
+    head.push_back(0);  // mapping family 0: mono or stereo
+    ogg_packet op{head.data(), static_cast<long>(head.size()), 1, 0, 0, 0};
+    ogg_stream_packetin(&os, &op);
+    while (ogg_stream_flush(&os, &page)) append(stream, page);
+    const std::string vendor = opus_get_version_string(), title = "TITLE=A major";
+    std::vector<unsigned char> tags = {'O', 'p', 'u', 's', 'T', 'a', 'g', 's'};
+    put(tags, static_cast<std::uint32_t>(vendor.size()), 4);
+    tags.insert(tags.end(), vendor.begin(), vendor.end());
+    put(tags, 1, 4);
+    put(tags, static_cast<std::uint32_t>(title.size()), 4);
+    tags.insert(tags.end(), title.begin(), title.end());
+    op = ogg_packet{tags.data(), static_cast<long>(tags.size()), 0, 0, 0, 1};
+    ogg_stream_packetin(&os, &op);
+    while (ogg_stream_flush(&os, &page)) append(stream, page);
+
+    // The audio, and the encoder's delay flushed with silence; the last
+    // granule position trims the stream to exactly `samples`.
+    const int total = samples + preskip;
+    std::vector<float> pcm(static_cast<std::size_t>(frame) * channels);
+    unsigned char packet[4000];
+    int packets = 0;
+    for (int at = 0; at < total; at += frame, ++packets) {
+        std::fill(pcm.begin(), pcm.end(), 0.0f);
+        const int n = std::clamp(samples - at, 0, frame);
+        std::copy_n(chord.begin() + static_cast<std::ptrdiff_t>(at) * channels, n * channels, pcm.begin());
+        const int len = opus_encode_float(enc, pcm.data(), frame, packet, sizeof packet);
+        const bool last = at + frame >= total;
+        op = ogg_packet{packet, len, 0, last ? 1 : 0, last ? total : at + frame, 2 + packets};
+        ogg_stream_packetin(&os, &op);
+        while (ogg_stream_pageout(&os, &page)) append(stream, page);
+    }
+    while (ogg_stream_flush(&os, &page)) append(stream, page);
+    ogg_stream_clear(&os);
+    opus_encoder_destroy(enc);
+    std::println("encoded {} samples into {} packets, an Ogg Opus stream of {} bytes", samples, packets, stream.size());
+
+    // Read it back as a player would.
+    OggOpusFile* of = op_open_memory(stream.data(), stream.size(), &err);
+    if (!of) {
+        std::println(std::cerr, "op_open_memory failed: {}", err);
+        return 1;
+    }
+    const OpusHead* h = op_head(of, -1);
+    std::println("OpusHead: {} channels, pre-skip {}, {} Hz input; vendor \"{}\", {}", h->channel_count, h->pre_skip,
+                 h->input_sample_rate, op_tags(of, -1)->vendor, opus_tags_query(op_tags(of, -1), "TITLE", 0));
+    std::vector<float> decoded;
+    std::vector<float> buffer(5760 * channels);
+    for (int n; (n = op_read_float(of, buffer.data(), static_cast<int>(buffer.size()), nullptr)) > 0;)
+        decoded.insert(decoded.end(), buffer.begin(), buffer.begin() + n * channels);
+    std::println("decoded {} samples (op_pcm_total {}), at {} kb/s", decoded.size() / channels, op_pcm_total(of, -1),
+                 op_bitrate(of, -1) / 1000);
+    op_free(of);
+
+    // opusfile has removed the pre-skip, so the decoded signal lines up with the input.
+    double signal = 0, noise = 0;
+    for (std::size_t i = 0; i < std::min(decoded.size(), chord.size()); ++i) {
+        signal += chord[i] * chord[i];
+        noise += (chord[i] - decoded[i]) * (chord[i] - decoded[i]);
+    }
+    std::println("signal-to-noise ratio: {:.1f} dB", 10 * std::log10(signal / noise));
+
+    if (argc > 1) {
+        std::ofstream(argv[1], std::ios::binary).write(reinterpret_cast<const char*>(stream.data()),
+                                                     static_cast<std::streamsize>(stream.size()));
+        std::println("wrote {}", argv[1]);
+    }
+    return decoded.size() == chord.size() ? 0 : 1;
+}

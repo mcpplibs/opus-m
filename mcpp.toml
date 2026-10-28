@@ -1,0 +1,64 @@
+# Module wrapper; upstream API preserved. Policy: mcpp-index/docs/mwrap.md.
+[package]
+namespace   = "mcpplibs.mwrap"
+name        = "opus"
+version     = "1.6.1"
+description = "Opus C++ modules for mcpp (import mcpplibs.mwrap.opus;): the libopus 1.6.1 codec (encoder, decoder, multistream, projection, repacketizer), the opusfile 0.12 Ogg Opus reader and the libogg 1.3.6 container, over compat.opus, compat.opusfile and compat.ogg; the macros as constants, type aliases and typed CTL requests"
+license     = "Apache-2.0"
+authors     = ["mcpp-community"]
+repo        = "https://github.com/mcpplibs/opus-m"
+platforms   = ["linux", "macos", "windows"]
+
+[targets.opus]
+kind = "lib"
+
+[build]
+sources      = ["src/*.cppm"]
+# <mwrap/opus/macros.hpp>: the headers, in the order the modules include them,
+# for the macros a C++ entity cannot be.
+include_dirs = ["include"]
+
+[dependencies]
+compat.opus     = "1.6.1"
+compat.opusfile = "0.12"
+compat.ogg      = "1.3.6"
+
+[dev-dependencies]
+compat.gtest = "1.15.2"
+
+[package.metadata.mwrap]
+upstream-version = "1.6.1"
+opusfile-version = "0.12"
+ogg-version      = "1.3.6"
+
+[[runtime.deploy]]
+from = "LICENSE"
+to   = "licenses/opus"
+
+[[runtime.deploy]]
+from = "NOTICE"
+to   = "licenses/opus"
+
+[[runtime.deploy]]
+from = "upstream/opus/README"
+to   = "licenses/opus/upstream/opus"
+
+[[runtime.deploy]]
+from = "upstream/opus/COPYING"
+to   = "licenses/opus/upstream/opus"
+
+[[runtime.deploy]]
+from = "upstream/opusfile/README.md"
+to   = "licenses/opus/upstream/opusfile"
+
+[[runtime.deploy]]
+from = "upstream/opusfile/COPYING"
+to   = "licenses/opus/upstream/opusfile"
+
+[[runtime.deploy]]
+from = "upstream/ogg/README.md"
+to   = "licenses/opus/upstream/ogg"
+
+[[runtime.deploy]]
+from = "upstream/ogg/COPYING"
+to   = "licenses/opus/upstream/ogg"

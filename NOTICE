@@ -1,0 +1,27 @@
+opus-m: C++ module wrapper
+Copyright (c) 2026 mcpp-community contributors
+
+The wrapper contributions are licensed under the Apache License, Version 2.0.
+Upstream code, copied interfaces and dependencies retain their original
+licenses and copyright notices. The three libraries this wrapper links are
+distributed under the BSD 3-Clause License:
+
+  libopus 1.6.1   Copyright 2001-2023 Xiph.Org, Skype Limited, Octasic,
+                  Jean-Marc Valin, Timothy B. Terriberry, CSIRO,
+                  Gregory Maxwell, Mark Borgerding, Erik de Castro Lopo,
+                  Mozilla, Amazon
+  opusfile 0.12   Copyright (c) 1994-2013 Xiph.Org Foundation and contributors
+  libogg 1.3.6    Copyright (c) 2002, Xiph.org Foundation
+
+Opus is subject to the royalty-free patent licenses referenced in
+upstream/opus/COPYING. Each library's original README and license are retained
+in upstream/opus/, upstream/opusfile/ and upstream/ogg/. The libraries are
+built by compat.opus, compat.opusfile and compat.ogg from the same releases;
+this wrapper links them, it does not modify them.
+
+examples/opus/conformance/opus_compare.c is libopus 1.6.1's src/opus_compare.c,
+unchanged, under the same BSD 3-Clause License (Copyright (c) 2011-2012
+Xiph.Org Foundation, Mozilla Corporation). The conformance runner reads the
+RFC 8251 test vectors from opus-codec.org; they are not redistributed here.
+
+Provenance and checksums are recorded in upstream/documents.json.
