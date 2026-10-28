@@ -30,6 +30,7 @@ from pathlib import Path
 import re
 import sys
 import tarfile
+import time
 import urllib.request
 
 # module -> [(archive, path inside the archive's top directory)]
@@ -62,9 +63,19 @@ def pins(root: Path) -> dict:
 def fetch_url(url: str, sha256: str, path: Path) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     if not path.exists() or hashlib.sha256(path.read_bytes()).hexdigest() != sha256:
-        print('+ fetch', url, flush=True)
-        with urllib.request.urlopen(url, timeout=300) as response:
-            path.write_bytes(response.read())
+        # A few attempts: CI's runners meet the occasional dropped TLS connection.
+        for attempt in range(1, 6):
+            print('+ fetch', url, f'(attempt {attempt})' if attempt > 1 else '', flush=True)
+            try:
+                request = urllib.request.Request(url, headers={'User-Agent': 'opus-m-tools/1.0'})
+                with urllib.request.urlopen(request, timeout=300) as response:
+                    path.write_bytes(response.read())
+                break
+            except OSError as error:  # URLError, ssl.SSLError and timeouts are OSErrors
+                print(f'  {error}', flush=True)
+                if attempt == 5:
+                    raise
+                time.sleep(10 * attempt)
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
     if digest != sha256:
         sys.exit(f'{url}: checksum {digest} != {sha256}')
