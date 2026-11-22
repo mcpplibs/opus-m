@@ -7,4 +7,4 @@ kind = "bin"
 main = "src/main.cpp"
 
 [dependencies]
-"{{self.name}}" = "{{self.version}}"
+{{self.name}} = "{{self.version}}"

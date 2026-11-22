@@ -2,7 +2,7 @@
 [package]
 namespace   = "mcpplibs.mwrap"
 name        = "opus"
-version     = "1.6.1"
+version     = "1.6.1.1"
 description = "Opus C++ modules for mcpp (import mcpplibs.mwrap.opus;): the libopus 1.6.1 codec (encoder, decoder, multistream, projection, repacketizer), the opusfile 0.12 Ogg Opus reader and the libogg 1.3.6 container, over compat.opus, compat.opusfile and compat.ogg; the macros as constants, type aliases and typed CTL requests"
 license     = "Apache-2.0"
 authors     = ["mcpp-community"]
