@@ -34,7 +34,7 @@ through the module, and checks them with libopus's own `opus_compare`.
 ## Getting started
 
 ```sh
-mcpp new tone --template mcpplibs.mwrap.opus@1.6.1
+mcpp new tone --template mcpplibs.mwrap.opus@1.6.1.1
 cd tone
 mcpp run
 ```
@@ -46,7 +46,7 @@ memory. Run `mcpp run -- tone.opus` to write the stream to a file too.
 
 ```toml
 [dependencies]
-"mcpplibs.mwrap.opus" = "1.6.1"
+mcpplibs.mwrap.opus = "1.6.1.1"
 ```
 
 ```cpp

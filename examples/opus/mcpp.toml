@@ -19,4 +19,4 @@ kind = "bin"
 main = "conformance/opus_compare.c"
 
 [dependencies]
-"mcpplibs.mwrap.opus" = { path = "../.." }
+mcpplibs.mwrap.opus = { path = "../.." }

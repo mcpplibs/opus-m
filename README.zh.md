@@ -30,7 +30,7 @@ libopus 1.6.1(编码器与解码器、multistream、ambisonics、repacketizer)�
 ## 快速开始
 
 ```sh
-mcpp new tone --template mcpplibs.mwrap.opus@1.6.1
+mcpp new tone --template mcpplibs.mwrap.opus@1.6.1.1
 cd tone
 mcpp run
 ```
@@ -40,7 +40,7 @@ mcpp run
 
 ```toml
 [dependencies]
-"mcpplibs.mwrap.opus" = "1.6.1"
+mcpplibs.mwrap.opus = "1.6.1.1"
 ```
 
 ```cpp
